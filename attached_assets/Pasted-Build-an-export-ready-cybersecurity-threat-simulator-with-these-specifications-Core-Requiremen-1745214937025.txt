@@ -1,0 +1,115 @@
+Build an export-ready cybersecurity threat simulator with these specifications:  
+
+# Core Requirements  
+**1. GitLab Integration (OAuth2)**  
+- Use GitLab OAuth2 flow (not personal tokens)  
+- Store credentials via environment variables:  
+
+GITLAB_CLIENT_ID=your_client_id
+GITLAB_SECRET=your_secret
+SESSION_SECRET=your_session_key
+
+text
+- Auto-pull project/scenarios from connected repo on initial auth  
+- Scheduled sync via cron job (not Replit-specific)  
+
+**2. Scenario Execution Engine**  
+- Parse `/scenarios/*.yaml` files with:  
+
+name: "Phishing Kit"
+description: "Simulates email-based attacks"
+target_apps: [Office365, GWorkspace]
+exec_command: "python main.py --scenario=phishing"
+
+text
+- Real-time output streaming via WebSockets  
+
+execution_handler.py
+
+async def run_scenario(command):
+proc = await asyncio.create_subprocess_shell(
+command,
+stdout=asyncio.subprocess.PIPE,
+stderr=asyncio.subprocess.STDOUT
+)
+async for line in proc.stdout:
+await websocket.send(line.decode())
+
+text
+
+**3. Frontend Requirements**  
+- Dark theme dashboard (reference: https://demo.themefisher.com/airspace/)  
+- Scenario cards with:  
+- Name/description from YAML  
+- Last run status  
+- "Run Now" button  
+- Detail page with:  
+- Interactive console  
+- Compatibility matrix  
+- Historical run logs  
+
+# Tech Stack  
+- **Frontend**: React + Vite + @mui/material (dark theme preset)  
+- **Backend**: FastAPI + WebSockets (avoid Flask for better async)  
+- **Database**: PostgreSQL-compatible schema (use SQLAlchemy ORM)  
+- **Auth**: OpenID Connect (GitLab OAuth2)  
+
+# Export Preparation  
+1. Include `docker-compose.yml` for local development:  
+
+services:
+app:
+build: .
+ports:
+- "8000:8000"
+env_file: .env
+db:
+image: postgres:15
+volumes:
+- postgres_data:/var/lib/postgresql/data
+
+text
+
+2. Add environment template:  
+
+.env.template
+
+DATABASE_URL=postgresql://user:pass@db:5432/app
+GITLAB_REDIRECT_URI=http://localhost:8000/auth/callback
+
+text
+
+3. Modularize code into:  
+
+/frontend # React app
+/backend # FastAPI app
+/migrations # Database schema
+
+text
+
+# Priority Order  
+1. Secure auth flow (OAuth2 with PKCE)  
+2. Scenario YAML parser  
+3. WebSocket execution console  
+4. Export-friendly packaging  
+
+# Prohibited Patterns  
+- Replit DB usage (use PostgreSQL)  
+- Hardcoded credentials  
+- Platform-specific scheduling (use cron syntax)  
+
+# Success Criteria  
+- Can deploy via `docker compose up` after export  
+- SEs only need to:  
+1. Log in with GitLab  
+2. Click "Run" on any scenario  
+
+Key Export-Ready Features
+
+    Containerized architecture
+
+    Environment-based configuration
+
+    Decoupled frontend/backend
+
+    No proprietary dependencies
