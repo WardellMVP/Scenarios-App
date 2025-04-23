@@ -5,6 +5,13 @@ import { WebSocketServer } from "ws";
 import { z } from "zod";
 import WebSocket from "ws";
 
+// Extend Express session types
+declare module 'express-session' {
+  interface SessionData {
+    userId: number;
+  }
+}
+
 import { storage } from "./storage";
 import { 
   getAuthUrl, exchangeCodeForToken, 
@@ -66,7 +73,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ url: authUrl });
   });
   
-  app.get("/api/auth/callback", async (req: Request, res: Response) => {
+  // Keep the original callback for backward compatibility
+  app.get("/api/auth/callback", handleAuthCallback);
+  
+  // Add the new callback route to match GitLab settings
+  app.get("/auth/gitlab/callback", handleAuthCallback);
+  
+  // Extract the callback handler to a separate function
+  async function handleAuthCallback(req: Request, res: Response) {
     try {
       const { code } = req.query;
       
@@ -119,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Authentication error:", error);
       res.status(500).json({ message: "Authentication failed" });
     }
-  });
+  }
   
   app.get("/api/auth/user", ensureAuthenticated, async (req: Request, res: Response) => {
     try {

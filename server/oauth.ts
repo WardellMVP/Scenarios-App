@@ -5,7 +5,7 @@ import { InsertUser } from "@shared/schema";
 // Environment variable handling
 const GITLAB_CLIENT_ID = process.env.GITLAB_CLIENT_ID;
 const GITLAB_SECRET = process.env.GITLAB_SECRET;
-const REDIRECT_URI = process.env.GITLAB_REDIRECT_URI || "https://workspace.bsegobiz.repl.co/api/auth/callback";
+const REDIRECT_URI = process.env.GITLAB_REDIRECT_URI || "https://f38806e9-ad38-4b4c-a0ec-309897d575de-00-2ss2phdi1zfiv.picard.replit.dev/auth/gitlab/callback";
 
 if (!GITLAB_CLIENT_ID || !GITLAB_SECRET) {
   console.error("Missing GitLab OAuth credentials. Set GITLAB_CLIENT_ID and GITLAB_SECRET environment variables.");
