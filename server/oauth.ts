@@ -5,10 +5,12 @@ import { InsertUser } from "@shared/schema";
 // Environment variable handling
 const GITLAB_CLIENT_ID = process.env.GITLAB_CLIENT_ID;
 const GITLAB_SECRET = process.env.GITLAB_SECRET;
-const REDIRECT_URI = process.env.GITLAB_REDIRECT_URI || "http://localhost:5000/api/auth/callback";
+const REDIRECT_URI = process.env.GITLAB_REDIRECT_URI || "https://workspace.bsegobiz.repl.co/api/auth/callback";
 
 if (!GITLAB_CLIENT_ID || !GITLAB_SECRET) {
   console.error("Missing GitLab OAuth credentials. Set GITLAB_CLIENT_ID and GITLAB_SECRET environment variables.");
+} else {
+  console.log("GitLab OAuth credentials found. Using redirect URI:", REDIRECT_URI);
 }
 
 // GitLab API URLs
