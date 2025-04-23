@@ -1,22 +1,24 @@
+/**
+ * OAuth Authentication Module
+ * 
+ * This module handles authentication via GitLab OAuth, including:
+ * - Generating authorization URLs
+ * - Exchanging auth codes for tokens
+ * - Fetching user information
+ * - Token refreshing
+ * - Authentication middleware
+ */
 import { NextFunction, Request, Response } from "express";
 import { storage } from "./storage";
 import { InsertUser } from "@shared/schema";
+import { OAUTH } from "./config";
 
-// Environment variable handling
-const GITLAB_CLIENT_ID = process.env.GITLAB_CLIENT_ID;
-const GITLAB_SECRET = process.env.GITLAB_SECRET;
-const REDIRECT_URI = process.env.GITLAB_REDIRECT_URI || "https://f38806e9-ad38-4b4c-a0ec-309897d575de-00-2ss2phdi1zfiv.picard.replit.dev/auth/gitlab/callback";
-
-if (!GITLAB_CLIENT_ID || !GITLAB_SECRET) {
+// Validate required GitLab credentials
+if (!OAUTH.GITLAB_CLIENT_ID || !OAUTH.GITLAB_SECRET) {
   console.error("Missing GitLab OAuth credentials. Set GITLAB_CLIENT_ID and GITLAB_SECRET environment variables.");
 } else {
-  console.log("GitLab OAuth credentials found. Using redirect URI:", REDIRECT_URI);
+  console.log("GitLab OAuth credentials found. Using redirect URI:", OAUTH.REDIRECT_URI);
 }
-
-// GitLab API URLs
-const GITLAB_AUTH_URL = "https://gitlab.com/oauth/authorize";
-const GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token";
-const GITLAB_API_URL = "https://gitlab.com/api/v4";
 
 // Types for GitLab responses
 export interface GitLabTokenResponse {
@@ -36,32 +38,39 @@ export interface GitLabUserResponse {
   avatar_url: string;
 }
 
-// Generate OAuth authorization URL
-export function getAuthUrl() {
+/**
+ * Generate OAuth authorization URL for GitLab
+ * @returns {string} Complete authorization URL with parameters
+ */
+export function getAuthUrl(): string {
   const params = new URLSearchParams({
-    client_id: GITLAB_CLIENT_ID || "",
-    redirect_uri: REDIRECT_URI,
+    client_id: OAUTH.GITLAB_CLIENT_ID || "",
+    redirect_uri: OAUTH.REDIRECT_URI,
     response_type: "code",
     scope: "read_user api",
     state: generateRandomString(),
   });
 
-  return `${GITLAB_AUTH_URL}?${params.toString()}`;
+  return `${OAUTH.GITLAB_AUTH_URL}?${params.toString()}`;
 }
 
-// Exchange authorization code for tokens
+/**
+ * Exchange authorization code for access tokens
+ * @param {string} code - The authorization code from GitLab
+ * @returns {Promise<GitLabTokenResponse>} Token data including access_token and refresh_token
+ */
 export async function exchangeCodeForToken(code: string): Promise<GitLabTokenResponse> {
-  const tokenResponse = await fetch(GITLAB_TOKEN_URL, {
+  const tokenResponse = await fetch(OAUTH.GITLAB_TOKEN_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      client_id: GITLAB_CLIENT_ID,
-      client_secret: GITLAB_SECRET,
+      client_id: OAUTH.GITLAB_CLIENT_ID,
+      client_secret: OAUTH.GITLAB_SECRET,
       code,
       grant_type: "authorization_code",
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: OAUTH.REDIRECT_URI,
     }),
   });
 
@@ -73,9 +82,13 @@ export async function exchangeCodeForToken(code: string): Promise<GitLabTokenRes
   return await tokenResponse.json();
 }
 
-// Get user info from GitLab API
+/**
+ * Get user information from GitLab API
+ * @param {string} accessToken - The access token for the GitLab API
+ * @returns {Promise<GitLabUserResponse>} User profile information
+ */
 export async function getGitLabUser(accessToken: string): Promise<GitLabUserResponse> {
-  const userResponse = await fetch(`${GITLAB_API_URL}/user`, {
+  const userResponse = await fetch(`${OAUTH.GITLAB_API_URL}/user`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -89,19 +102,23 @@ export async function getGitLabUser(accessToken: string): Promise<GitLabUserResp
   return await userResponse.json();
 }
 
-// Refresh access token
+/**
+ * Refresh an expired access token
+ * @param {string} refreshToken - The refresh token to use
+ * @returns {Promise<GitLabTokenResponse>} New token data
+ */
 export async function refreshGitLabToken(refreshToken: string): Promise<GitLabTokenResponse> {
-  const tokenResponse = await fetch(GITLAB_TOKEN_URL, {
+  const tokenResponse = await fetch(OAUTH.GITLAB_TOKEN_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      client_id: GITLAB_CLIENT_ID,
-      client_secret: GITLAB_SECRET,
+      client_id: OAUTH.GITLAB_CLIENT_ID,
+      client_secret: OAUTH.GITLAB_SECRET,
       refresh_token: refreshToken,
       grant_type: "refresh_token",
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: OAUTH.REDIRECT_URI,
     }),
   });
 
@@ -113,7 +130,10 @@ export async function refreshGitLabToken(refreshToken: string): Promise<GitLabTo
   return await tokenResponse.json();
 }
 
-// Middleware to check if user is authenticated
+/**
+ * Middleware to check if user is authenticated
+ * This middleware protects routes that require authentication
+ */
 export function ensureAuthenticated(req: Request, res: Response, next: NextFunction) {
   if (req.session && req.session.userId) {
     return next();
@@ -122,8 +142,13 @@ export function ensureAuthenticated(req: Request, res: Response, next: NextFunct
   res.status(401).json({ message: "Unauthorized" });
 }
 
-// Helper function to generate a random string for state param
-function generateRandomString(length = 32) {
+/**
+ * Generate a cryptographically secure random string
+ * Used for OAuth state parameter to prevent CSRF attacks
+ * @param {number} length - Length of the random string
+ * @returns {string} Random string of specified length
+ */
+function generateRandomString(length = 32): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
   const charactersLength = chars.length;
